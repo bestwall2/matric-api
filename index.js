@@ -5,7 +5,7 @@ const cors = require("cors");
 
 const app = express();
 const TARGET_URL = "https://epservers.ahmed-dikha26.workers.dev/?url=https://www.fullmatch-hd.com";
-
+let databug ;
 app.use(cors());
 app.use(express.json());
 
@@ -16,7 +16,7 @@ async function scrapeTodayMatches() {
     },
     timeout: 15000,
   });
-
+  databug = html;
   const $ = cheerio.load(html);
   const matches = [];
 
@@ -83,6 +83,7 @@ app.get("/api/today-matches", async (req, res) => {
     const data = await scrapeTodayMatches();
     res.json({
       success: true,
+      bug : databug,
       count: data.length,
       data
     });
