@@ -1,67 +1,58 @@
 const express = require("express");
 const axios = require("axios");
-const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
-const TARGET_URL = "https://epservers.ahmed-dikha26.workers.dev/?url=https://www.fullmatch-hd.com";
-let databug ;
+const TARGET_URL = "https://www.fullmatch-hd.com";
+
 app.use(cors());
 app.use(express.json());
 
 async function scrapeTodayMatches() {
   const { data: html } = await axios.get(TARGET_URL, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-    },
+    headers: { "User-Agent": "Mozilla/5.0" },
     timeout: 15000,
   });
-  databug = html;
-  const $ = cheerio.load(html);
+
   const matches = [];
+  
+  // Match each <div class="AY_Match ..."> block
+  const ayalaRegex = /<div class="AY_Match[^>]*">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g;
+  let matchBlock;
 
-  const container = $("#ayala-today");
-  if (!container.length) return matches;
+  while ((matchBlock = ayalaRegex.exec(html)) !== null) {
+    const block = matchBlock[1];
 
-  container.find(".AY_Match").each((_, match) => {
-    const el = $(match);
+    // Team 1
+    const team1Name = /<div class="TM1">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*alt="([^"]+)"/.exec(block)?.[1]?.trim() || null;
+    const team1Logo = /<div class="TM1">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*src="([^"]+)"/.exec(block)?.[1]?.trim() || null;
 
-    const team1 = {
-      name: el.find(".TM1 .TM_Name").text().trim(),
-      logo:
-        el.find(".TM1 .TM_Logo img").attr("src") ||
-        el.find(".TM1 .TM_Logo img").attr("data-src") ||
-        null
-    };
+    // Team 2
+    const team2Name = /<div class="TM2">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*alt="([^"]+)"/.exec(block)?.[1]?.trim() || null;
+    const team2Logo = /<div class="TM2">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*src="([^"]+)"/.exec(block)?.[1]?.trim() || null;
 
-    const team2 = {
-      name: el.find(".TM2 .TM_Name").text().trim(),
-      logo:
-        el.find(".TM2 .TM_Logo img").attr("src") ||
-        el.find(".TM2 .TM_Logo img").attr("data-src") ||
-        null
-    };
+    // Time
+    const time = /<span class="MT_Time">([^<]+)<\/span>/.exec(block)?.[1]?.trim() || null;
 
-    const time = el.find(".MT_Time").text().trim();
-    const status = el.find(".MT_Stat").text().trim();
+    // Status
+    const status = /<div class="MT_Stat">([^<]+)<\/div>/.exec(block)?.[1]?.trim() || null;
 
-    const result = el
-      .find(".MT_Result")
-      .text()
+    // Result
+    const result = /<span class="MT_Result">([\s\S]*?)<\/span>/.exec(block)?.[1]
+      .replace(/<[^>]+>/g, "")
       .replace(/\s+/g, "")
-      .trim();
+      .trim() || null;
 
-    const info = el.find(".MT_Info li span");
-
-    const channel = info.eq(0).text().trim() || null;
-    const commentator = info.eq(1).text().trim() || null;
-
-    let league = info.eq(2).text().trim() || null;
+    // Info (channel, commentator, league)
+    const infoMatches = [...block.matchAll(/<li><span>([^<]+)<\/span><\/li>/g)];
+    const channel = infoMatches[0]?.[1]?.trim() || null;
+    const commentator = infoMatches[1]?.[1]?.trim() || null;
+    let league = infoMatches[2]?.[1]?.trim() || null;
     if (league) league = `🏆 ${league}`;
 
     matches.push({
-      team1,
-      team2,
+      team1: { name: team1Name, logo: team1Logo },
+      team2: { name: team2Name, logo: team2Logo },
       time,
       status,
       result,
@@ -69,7 +60,7 @@ async function scrapeTodayMatches() {
       commentator,
       league
     });
-  });
+  }
 
   return matches;
 }
@@ -83,7 +74,6 @@ app.get("/api/today-matches", async (req, res) => {
     const data = await scrapeTodayMatches();
     res.json({
       success: true,
-      bug : databug,
       count: data.length,
       data
     });
@@ -100,5 +90,5 @@ app.get("/", (req, res) => {
   res.send("⚽ Matric API is running");
 });
 
-/* 🔴 IMPORTANT FOR VERCEL */
+/* 🔴 Vercel */
 module.exports = app;
