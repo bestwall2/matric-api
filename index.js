@@ -15,33 +15,30 @@ async function scrapeTodayMatches() {
   });
 
   const matches = [];
-  
-  // Match each <div class="AY_Match ..."> block
-  const ayalaRegex = /<div class="AY_Match[^>]*">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g;
+
+  // Match each AY_Match block (lazy, handles newlines)
+  const ayalaRegex = /<div class="AY_Match[^>]*">([\s\S]*?)<\/a><\/div>/g;
   let matchBlock;
 
   while ((matchBlock = ayalaRegex.exec(html)) !== null) {
     const block = matchBlock[1];
 
     // Team 1
-    const team1Name = /<div class="TM1">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*alt="([^"]+)"/.exec(block)?.[1]?.trim() || null;
-    const team1Logo = /<div class="TM1">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*src="([^"]+)"/.exec(block)?.[1]?.trim() || null;
+    const team1Name = /<div class="TM1">[\s\S]*?<div class="TM_Name">([\s\S]*?)<\/div>/.exec(block)?.[1]?.trim() || null;
+    const team1Logo = /<div class="TM1">[\s\S]*?<img[^>]+(?:data-src|src)="([^"]+)"/.exec(block)?.[1]?.trim() || null;
 
     // Team 2
-    const team2Name = /<div class="TM2">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*alt="([^"]+)"/.exec(block)?.[1]?.trim() || null;
-    const team2Logo = /<div class="TM2">\s*<div class="TM_Logo">[\s\S]*?<img [^>]*src="([^"]+)"/.exec(block)?.[1]?.trim() || null;
+    const team2Name = /<div class="TM2">[\s\S]*?<div class="TM_Name">([\s\S]*?)<\/div>/.exec(block)?.[1]?.trim() || null;
+    const team2Logo = /<div class="TM2">[\s\S]*?<img[^>]+(?:data-src|src)="([^"]+)"/.exec(block)?.[1]?.trim() || null;
 
     // Time
-    const time = /<span class="MT_Time">([^<]+)<\/span>/.exec(block)?.[1]?.trim() || null;
+    const time = /<span class="MT_Time">([\s\S]*?)<\/span>/.exec(block)?.[1]?.trim() || null;
 
     // Status
-    const status = /<div class="MT_Stat">([^<]+)<\/div>/.exec(block)?.[1]?.trim() || null;
+    const status = /<div class="MT_Stat">([\s\S]*?)<\/div>/.exec(block)?.[1]?.trim() || null;
 
     // Result
-    const result = /<span class="MT_Result">([\s\S]*?)<\/span>/.exec(block)?.[1]
-      .replace(/<[^>]+>/g, "")
-      .replace(/\s+/g, "")
-      .trim() || null;
+    const result = /<span class="MT_Result">([\s\S]*?)<\/span>/.exec(block)?.[1]?.replace(/<[^>]+>/g, "").replace(/\s+/g, "") || null;
 
     // Info (channel, commentator, league)
     const infoMatches = [...block.matchAll(/<li><span>([^<]+)<\/span><\/li>/g)];
