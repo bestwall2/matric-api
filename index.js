@@ -4,8 +4,7 @@ const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const TARGET_URL = "https://www.fullmatch-hd.com"; // page containing #ayala-today
+const TARGET_URL = "https://www.fullmatch-hd.com";
 
 app.use(cors());
 app.use(express.json());
@@ -32,7 +31,7 @@ async function scrapeTodayMatches() {
       logo:
         el.find(".TM1 .TM_Logo img").attr("src") ||
         el.find(".TM1 .TM_Logo img").attr("data-src") ||
-        null,
+        null
     };
 
     const team2 = {
@@ -40,7 +39,7 @@ async function scrapeTodayMatches() {
       logo:
         el.find(".TM2 .TM_Logo img").attr("src") ||
         el.find(".TM2 .TM_Logo img").attr("data-src") ||
-        null,
+        null
     };
 
     const time = el.find(".MT_Time").text().trim();
@@ -75,31 +74,30 @@ async function scrapeTodayMatches() {
   return matches;
 }
 
-// ✅ API ROUTE
+/* =======================
+   API ROUTES
+======================= */
+
 app.get("/api/today-matches", async (req, res) => {
   try {
     const data = await scrapeTodayMatches();
-
     res.json({
       success: true,
       count: data.length,
       data
     });
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Failed to fetch matches",
-      error: error.message
+      error: err.message
     });
   }
 });
 
-// ✅ Health Check
 app.get("/", (req, res) => {
-  res.send("⚽ Today Matches API is running");
+  res.send("⚽ Matric API is running");
 });
 
-// START SERVER
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+/* 🔴 IMPORTANT FOR VERCEL */
+module.exports = app;
