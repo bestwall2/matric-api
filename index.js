@@ -4,7 +4,7 @@ const cors = require("cors");
 
 const app = express();
 const TARGET_URL = "https://www.fullmatch-hd.com";
-
+let test;
 app.use(cors());
 app.use(express.json());
 
@@ -13,7 +13,7 @@ async function scrapeTodayMatches() {
     headers: { "User-Agent": "Mozilla/5.0" },
     timeout: 15000,
   });
-
+  test = html;
   const matches = [];
 
   // Match each AY_Match block (lazy, handles newlines)
@@ -71,6 +71,7 @@ app.get("/api/today-matches", async (req, res) => {
     const data = await scrapeTodayMatches();
     res.json({
       success: true,
+      bug : test,
       count: data.length,
       data
     });
