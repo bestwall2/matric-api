@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
-const TARGET_URL = "https://www.fullmatch-hd.com";
+const TARGET_URL = "https://epservers.ahmed-dikha26.workers.dev/?url=https://www.fullmatch-hd.com";
 
 app.use(cors());
 app.use(express.json());
