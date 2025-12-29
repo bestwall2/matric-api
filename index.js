@@ -1,45 +1,80 @@
 const express = require("express");
-const puppeteer = require("puppeteer");
+const axios = require("axios");
+const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+const TARGET_URL = "https://www.fullmatch-hd.com/matches-today/";
+
 app.use(cors());
+app.use(express.json());
 
-app.get("/api/today-matches", async (req, res) => {
+async function scrapeTodayMatches() {
   try {
-    const browser = await puppeteer.launch({ args: ["--no-sandbox"] });
-    const page = await browser.newPage();
-    await page.goto("https://www.fullmatch-hd.com/matches-today/", { waitUntil: "networkidle2" });
-
-    const matches = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll(".AY_Match")).map(match => {
-        const team1 = match.querySelector(".TM1 .TM_Name")?.textContent.trim() || null;
-        const team2 = match.querySelector(".TM2 .TM_Name")?.textContent.trim() || null;
-        const logo1 = match.querySelector(".TM1 img")?.getAttribute("data-src") || null;
-        const logo2 = match.querySelector(".TM2 img")?.getAttribute("data-src") || null;
-        const time = match.querySelector(".MT_Time")?.textContent.trim() || null;
-        const status = match.querySelector(".MT_Stat")?.textContent.trim() || null;
-        const result = Array.from(match.querySelectorAll(".RS-goals")).map(g => g.textContent.trim()).join("-");
-        const info = match.querySelectorAll(".MT_Info li span");
-        const channel = info[0]?.textContent.trim() || null;
-        const commentator = info[1]?.textContent.trim() || "غير معروف";
-        const league = info[2]?.textContent.trim() ? `🏆 ${info[2].textContent.trim()}` : null;
-
-        return {
-          team1: { name: team1, logo: logo1 },
-          team2: { name: team2, logo: logo2 },
-          time, status, result, channel, commentator, league
-        };
-      });
+    const { data: html } = await axios.get(TARGET_URL, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 15000
     });
 
-    await browser.close();
-    res.json({ success: true, count: matches.length, data: matches });
+    const $ = cheerio.load(html);
+    const matches = [];
+
+    $(".AY_Match").each((_, match) => {
+      const el = $(match);
+
+      const team1 = {
+        name: el.find(".TM1 .TM_Name").text().trim() || null,
+        logo: el.find(".TM1 .TM_Logo img").attr("data-src") || null
+      };
+
+      const team2 = {
+        name: el.find(".TM2 .TM_Name").text().trim() || null,
+        logo: el.find(".TM2 .TM_Logo img").attr("data-src") || null
+      };
+
+      const time = el.find(".MT_Time").text().trim() || null;
+      const status = el.find(".MT_Stat").text().trim() || null;
+      const result = el.find(".MT_Result .RS-goals").map((i, g) => $(g).text()).get().join("-") || "0";
+
+      const info = el.find(".MT_Info li span");
+      const channel = info.eq(0).text().trim() || null;
+      const commentator = info.eq(1).text().trim() || null;
+      let league = info.eq(2).text().trim() || null;
+      if (league) league = `🏆 ${league}`;
+
+      matches.push({ team1, team2, time, status, result, channel, commentator, league });
+    });
+
+    return matches;
+
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("Scrape error:", err.message);
+    return [];
   }
+}
+
+/* =======================
+   API ROUTES
+======================= */
+app.get("/api/today-matches", async (req, res) => {
+  const data = await scrapeTodayMatches();
+  res.json({
+    success: true,
+    count: data.length,
+    data
+  });
 });
 
-app.get("/", (req, res) => res.send("⚽ Matric API is running"));
+app.get("/", (req, res) => {
+  res.send("⚽ Matric API is running");
+});
 
+/* 🔴 For Vercel */
 module.exports = app;
+
+/* Local test */
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+}
