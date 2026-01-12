@@ -6,7 +6,7 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const TARGET_URL = "https://www.fullmatch-hd.com/matches-today/";
+const TARGET_URL = "https://www.livesoccerhd.info/matches-today/";
 
 app.use(cors());
 app.use(express.json());
